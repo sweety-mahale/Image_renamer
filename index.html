@@ -619,14 +619,15 @@
 
         async function callGroqVision(apiKey, base64Data, mimeType) {
             // Groq blocks browser requests due to CORS, so we route through corsproxy.io as a proxy.
-            // We pass the authorization header in the query string to prevent browser preflight CORS blocks.
+            // We pass the authorization and content-type headers as query params and set the fetch
+            // content-type to text/plain. This prevents the browser from triggering preflight OPTIONS CORS blocks.
             const targetUrl = 'https://api.groq.com/openai/v1/chat/completions';
-            const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}&reqHeaders=authorization:Bearer%20${encodeURIComponent(apiKey)}`;
+            const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}&reqHeaders=content-type:application/json&reqHeaders=authorization:Bearer%20${encodeURIComponent(apiKey)}`;
             
             const response = await fetch(proxyUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'text/plain'
                 },
                 body: JSON.stringify({
                     messages: [{
