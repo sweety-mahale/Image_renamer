@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Image Renamer - Web App</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.3);
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg-dark: #0b0f19;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-light: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+            overflow-x: hidden;
+        }
+
+        header {
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.8rem;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.8rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.6rem 1.2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .radio-label:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        input[type="radio"] {
+            display: none;
+        }
+
+        input[type="radio"]:checked + span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .radio-label.selected {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            color: var(--text-light);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .flex-row > .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8rem 1.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 14px var(--primary-glow);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            background: #2563eb;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            background: #dc2626;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .progress-container {
+            margin-top: 1rem;
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
+            transition: width 0.3s ease;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .log-container {
+            margin-top: 1rem;
+        }
+
+        .log-widget {
+            width: 100%;
+            height: 250px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .browser-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Automated Image Renamer</h1>
+        <p>Select a local folder, extract sign codes automatically, and rename images securely in your browser.</p>
+    </header>
+
+    <div class="container">
+        <!-- Browser Support Warning -->
+        <div id="browserWarning" class="browser-warning">
+            ⚠️ <strong>Browser Limitation:</strong> Your browser does not support the modern <strong>File System Access API</strong>. Please open this app in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to use the renaming automation.
+        </div>
+
+        <!-- Settings Card -->
+        <div class="card">
+            <div class="card-title">⚙️ API Settings</div>
+
+            <div class="form-group">
+                <label id="keyLabel">Groq API Key</label>
+                <input type="password" id="apiKey" placeholder="Enter your secret Groq API Key">
+            </div>
+
+            <div class="flex-row">
+                <div class="form-group">
+                    <label>Delay between calls (seconds)</label>
+                    <select id="delayInput">
+                        <option value="0">0.0s (Fastest)</option>
+                        <option value="1">1.0s</option>
+                        <option value="2">2.0s</option>
+                        <option value="3" selected>3.0s (Recommended for Free Tier)</option>
+                        <option value="5">5.0s</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Folder Selection & Controls -->
+        <div class="card">
+            <div class="card-title">📁 File Selector</div>
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="btnSelectFolder">Select Folder...</button>
+                <span id="lblFolderName" style="color: var(--text-muted); font-size: 0.95rem;">No folder selected</span>
+            </div>
+
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn btn-success" id="btnStart" disabled>Start Renaming</button>
+                <button class="btn btn-danger" id="btnStop" disabled>Stop</button>
+            </div>
+        </div>
+
+        <!-- Progress and Output -->
+        <div class="card">
+            <div class="card-title">📊 Progress Log</div>
+            <div class="progress-container">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="progress-info">
+                    <span id="lblProgressStatus">Idle</span>
+                    <span id="lblProgressPercent">0%</span>
+                </div>
+            </div>
+
+            <div class="log-container">
+                <div class="log-widget" id="logWidget">Console initialized. Ready to process.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check Browser Compatibility
+        const supportsFileSystemAccess = 'showDirectoryPicker' in window;
+        if (!supportsFileSystemAccess) {
+            document.getElementById('browserWarning').style.display = 'block';
+            document.getElementById('btnSelectFolder').disabled = true;
+        }
+
+        let dirHandle = null;
+        let isRunning = false;
+        let shouldStop = false;
+
+        // Load cached API key from local storage if available
+        document.addEventListener('DOMContentLoaded', () => {
+            const cachedKey = localStorage.getItem('renamer_groq_key');
+            if (cachedKey) {
+                document.getElementById('apiKey').value = cachedKey;
+            }
+        });
+
+        // Folder selection
+        document.getElementById('btnSelectFolder').addEventListener('click', async () => {
+            try {
+                dirHandle = await window.showDirectoryPicker();
+                document.getElementById('lblFolderName').textContent = `Selected: ${dirHandle.name}`;
+                document.getElementById('btnStart').disabled = false;
+                log(`Selected folder: ${dirHandle.name}`);
+            } catch (err) {
+                log(`Folder selection cancelled: ${err.message}`);
+            }
+        });
+
+        // Start button
+        document.getElementById('btnStart').addEventListener('click', startProcessing);
+        document.getElementById('btnStop').addEventListener('click', () => {
+            shouldStop = true;
+            log('Cancel requested. Wrapping up current request...');
+            document.getElementById('btnStop').disabled = true;
+        });
+
+        function log(text) {
+            const logWidget = document.getElementById('logWidget');
+            const now = new Date().toLocaleTimeString();
+            logWidget.textContent += `\n[${now}] ${text}`;
+            logWidget.scrollTop = logWidget.scrollHeight;
+        }
+
+        async function startProcessing() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            if (!apiKey) {
+                alert('Please enter your Groq API key.');
+                return;
+            }
+
+            // Save key to local storage
+            localStorage.setItem('renamer_groq_key', apiKey);
+
+            isRunning = true;
+            shouldStop = false;
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnSelectFolder').disabled = true;
+            document.getElementById('btnStop').disabled = false;
+            
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('lblProgressPercent').textContent = '0%';
+            document.getElementById('lblProgressStatus').textContent = 'Scanning files...';
+
+            log('Scanning folder for images...');
+
+            try {
+                // Collect image files
+                const files = [];
+                const regexRenamed = /^\d+(\(\d+\))?$/;
+
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                        if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+                            const baseName = file.name.substring(0, file.name.lastIndexOf('.'));
+                            // Skip already renamed files
+                            if (regexRenamed.test(baseName)) {
+                                continue;
+                            }
+                            files.push(entry);
+                        }
+                    }
+                }
+
+                const totalFiles = files.length;
+                if (totalFiles === 0) {
+                    log('No new images found to process.');
+                    document.getElementById('lblProgressStatus').textContent = 'No images found.';
+                    resetUI();
+                    return;
+                }
+
+                log(`Found ${totalFiles} new images to process.`);
+
+                const dryRun = false;
+                const delay = parseInt(document.getElementById('delayInput').value) * 1000;
+                
+                let successCount = 0;
+                let failCount = 0;
+                const allocatedNames = new Set();
+
+                for (let i = 0; i < totalFiles; i++) {
+                    if (shouldStop) break;
+
+                    const fileHandle = files[i];
+                    document.getElementById('lblProgressStatus').textContent = `Processing image ${i + 1} of ${totalFiles}: ${fileHandle.name}`;
+                    const percent = Math.round((i / totalFiles) * 100);
+                    document.getElementById('progressBar').style.width = `${percent}%`;
+                    document.getElementById('lblProgressPercent').textContent = `${percent}%`;
+
+                    // Rate-limiting delay
+                    if (delay > 0 && i > 0) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+
+                    try {
+                        const file = await fileHandle.getFile();
+                        const base64Data = await readFileAsBase64(file);
+                        const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                        
+                        log(`Processing ${fileHandle.name}...`);
+                        
+                        let data = await callGroqVision(apiKey, base64Data, file.type);
+
+                        if (data.has_sign && data.number) {
+                            const cleanNumber = data.number.replace(/\D/g, '');
+                            if (!cleanNumber) {
+                                log(`⚠️ [${fileHandle.name}] - Extracted number is invalid.`);
+                                failCount++;
+                            } else {
+                                // Find unique name
+                                let newName = await getUniqueFilename(dirHandle, cleanNumber, ext);
+                                while (allocatedNames.has(newName)) {
+                                    const base = newName.substring(0, newName.lastIndexOf('.'));
+                                    const match = base.match(/\((\d+)\)$/);
+                                    if (match) {
+                                        const count = parseInt(match[1]) + 1;
+                                        newName = `${base.replace(/\(\d+\)$/, '')}(${count})${ext}`;
+                                    } else {
+                                        newName = `${base}(1)${ext}`;
+                                    }
+                                }
+
+                                allocatedNames.add(newName);
+                                log(`✅ [${fileHandle.name}] -> Detected code: ${data.code || cleanNumber} -> Renaming to: ${newName}`);
+
+                                if (!dryRun) {
+                                    // File System Access API Renaming (copy + delete)
+                                    const newFileHandle = await dirHandle.getFileHandle(newName, { create: true });
+                                    const writable = await newFileHandle.createWritable();
+                                    await writable.write(file);
+                                    await writable.close();
+                                    await dirHandle.removeEntry(fileHandle.name);
+                                }
+                                successCount++;
+                            }
+                        } else {
+                            log(`❌ [${fileHandle.name}] - Sign board or code number not found.`);
+                            failCount++;
+                        }
+
+                    } catch (err) {
+                        log(`❌ [${fileHandle.name}] - API Error: ${err.message}`);
+                        failCount++;
+                    }
+                }
+
+                document.getElementById('progressBar').style.width = '100%';
+                document.getElementById('lblProgressPercent').textContent = '100%';
+                document.getElementById('lblProgressStatus').textContent = 'Completed!';
+                
+                log('==================================================');
+                log('                     SUMMARY                      ');
+                log('==================================================');
+                log(`Total processed: ${totalFiles}`);
+                log(`Successfully renamed: ${successCount}`);
+                log(`Unresolved/Errors: ${failCount}`);
+                log('==================================================');
+                
+            } catch (err) {
+                log(`Fatal Error: ${err.message}`);
+            } finally {
+                resetUI();
+            }
+        }
+
+        function resetUI() {
+            isRunning = false;
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnSelectFolder').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function getUniqueFilename(directoryHandle, number, extension) {
+            try {
+                // Check if target name exists
+                await directoryHandle.getFileHandle(`${number}${extension}`);
+                
+                // If it exists, find unique index
+                let counter = 1;
+                while (true) {
+                    try {
+                        const candidate = `${number}(${counter})${extension}`;
+                        await directoryHandle.getFileHandle(candidate);
+                        counter++;
+                    } catch {
+                        return `${number}(${counter})${extension}`;
+                    }
+                }
+            } catch {
+                return `${number}${extension}`;
+            }
+        }
+
+
+
+        async function callGroqVision(apiKey, base64Data, mimeType) {
+            // Groq blocks browser requests due to CORS, so we route through corsproxy.io as a proxy
+            const targetUrl = 'https://api.groq.com/openai/v1/chat/completions';
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+            
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    messages: [{
+                        role: "user",
+                        content: [
+                            {
+                                type: "text",
+                                text: "Analyze this image and find the white sign board. Extract the sign code MP/26/XXXXX and isolate the 5-digit number. Return JSON with keys: has_sign (bool), code (string or null), number (string or null)."
+                            },
+                            {
+                                type: "image_url",
+                                image_url: {
+                                    url: `data:${mimeType};base64,${base64Data}`
+                                }
+                            }
+                        ]
+                    }],
+                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                    response_format: { type: "json_object" }
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Proxy error or bad response (HTTP ${response.status}): ${errText.substring(0, 100)}`);
+            }
+
+            const resData = await response.json();
+            const text = resData.choices[0].message.content.trim();
+            return JSON.parse(text);
+        }
+    </script>
+</body>
+</html>
