@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --primary: #3b82f6;
@@ -30,7 +33,7 @@
         body {
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-dark);
-            background-image: 
+            background-image:
                 radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.1) 0px, transparent 50%);
             color: var(--text-light);
@@ -136,7 +139,7 @@
             display: none;
         }
 
-        input[type="radio"]:checked + span {
+        input[type="radio"]:checked+span {
             color: var(--primary);
             font-weight: 600;
         }
@@ -146,7 +149,9 @@
             background: rgba(59, 130, 246, 0.1);
         }
 
-        input[type="text"], input[type="password"], select {
+        input[type="text"],
+        input[type="password"],
+        select {
             width: 100%;
             padding: 0.8rem 1rem;
             background: rgba(0, 0, 0, 0.4);
@@ -158,7 +163,9 @@
             transition: all 0.3s ease;
         }
 
-        input[type="text"]:focus, input[type="password"]:focus, select:focus {
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 10px var(--primary-glow);
@@ -170,7 +177,7 @@
             flex-wrap: wrap;
         }
 
-        .flex-row > .form-group {
+        .flex-row>.form-group {
             flex: 1;
             min-width: 200px;
         }
@@ -279,13 +286,25 @@
 
         /* Animations */
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Custom scrollbar */
@@ -293,13 +312,16 @@
             width: 8px;
             height: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: rgba(0, 0, 0, 0.1);
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 4px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
@@ -315,6 +337,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <header>
@@ -325,7 +348,9 @@
     <div class="container">
         <!-- Browser Support Warning -->
         <div id="browserWarning" class="browser-warning">
-            ⚠️ <strong>Browser Limitation:</strong> Your browser does not support the modern <strong>File System Access API</strong>. Please open this app in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> to use the renaming automation.
+            ⚠️ <strong>Browser Limitation:</strong> Your browser does not support the modern <strong>File System Access
+                API</strong>. Please open this app in <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>
+            to use the renaming automation.
         </div>
 
         <!-- Settings Card -->
@@ -335,6 +360,11 @@
             <div class="form-group">
                 <label id="keyLabel">Groq API Key</label>
                 <input type="password" id="apiKey" placeholder="Enter your secret Groq API Key">
+            </div>
+
+            <div class="form-group">
+                <label id="serverUrlLabel">Node.js Server URL (Optional if deployed, required if running locally)</label>
+                <input type="text" id="serverUrl" placeholder="e.g. http://localhost:10000 or https://your-app.onrender.com">
             </div>
 
             <div class="flex-row">
@@ -396,11 +426,17 @@
         let isRunning = false;
         let shouldStop = false;
 
-        // Load cached API key from local storage if available
+        // Load cached API key and server URL from local storage if available
         document.addEventListener('DOMContentLoaded', () => {
             const cachedKey = localStorage.getItem('renamer_groq_key');
             if (cachedKey) {
                 document.getElementById('apiKey').value = cachedKey;
+            }
+            const cachedServerUrl = localStorage.getItem('renamer_server_url');
+            if (cachedServerUrl) {
+                document.getElementById('serverUrl').value = cachedServerUrl;
+            } else if (window.location.protocol === 'file:') {
+                document.getElementById('serverUrl').value = 'http://localhost:10000';
             }
         });
 
@@ -438,15 +474,18 @@
                 return;
             }
 
-            // Save key to local storage
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+
+            // Save key and server URL to local storage
             localStorage.setItem('renamer_groq_key', apiKey);
+            localStorage.setItem('renamer_server_url', serverUrl);
 
             isRunning = true;
             shouldStop = false;
             document.getElementById('btnStart').disabled = true;
             document.getElementById('btnSelectFolder').disabled = true;
             document.getElementById('btnStop').disabled = false;
-            
+
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('lblProgressPercent').textContent = '0%';
             document.getElementById('lblProgressStatus').textContent = 'Scanning files...';
@@ -485,7 +524,7 @@
 
                 const dryRun = false;
                 const delay = parseInt(document.getElementById('delayInput').value) * 1000;
-                
+
                 let successCount = 0;
                 let failCount = 0;
                 const allocatedNames = new Set();
@@ -508,9 +547,9 @@
                         const file = await fileHandle.getFile();
                         const base64Data = await readFileAsBase64(file);
                         const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-                        
+
                         log(`Processing ${fileHandle.name}...`);
-                        
+
                         let data = await callGroqVision(apiKey, base64Data, file.type);
 
                         if (data.has_sign && data.number) {
@@ -559,7 +598,7 @@
                 document.getElementById('progressBar').style.width = '100%';
                 document.getElementById('lblProgressPercent').textContent = '100%';
                 document.getElementById('lblProgressStatus').textContent = 'Completed!';
-                
+
                 log('==================================================');
                 log('                     SUMMARY                      ');
                 log('==================================================');
@@ -567,7 +606,7 @@
                 log(`Successfully renamed: ${successCount}`);
                 log(`Unresolved/Errors: ${failCount}`);
                 log('==================================================');
-                
+
             } catch (err) {
                 log(`Fatal Error: ${err.message}`);
             } finally {
@@ -598,7 +637,7 @@
             try {
                 // Check if target name exists
                 await directoryHandle.getFileHandle(`${number}${extension}`);
-                
+
                 // If it exists, find unique index
                 let counter = 1;
                 while (true) {
@@ -615,19 +654,16 @@
             }
         }
 
-
-
         async function callGroqVision(apiKey, base64Data, mimeType) {
-            // Groq blocks browser requests due to CORS, so we route through corsproxy.io as a proxy.
-            // We pass the authorization and content-type headers as query params and set the fetch
-            // content-type to text/plain. This prevents the browser from triggering preflight OPTIONS CORS blocks.
-            const targetUrl = 'https://api.groq.com/openai/v1/chat/completions';
-            const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}&reqHeaders=content-type:application/json&reqHeaders=authorization:Bearer%20${encodeURIComponent(apiKey)}`;
+            const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
+            const endpoint = serverUrl ? `${serverUrl}/api/groq` : '/api/groq';
             
-            const response = await fetch(proxyUrl, {
+            // Fetch from our Node.js proxy endpoint (same-origin request or configured URL, avoiding CORS blocks entirely)
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/plain'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
                 },
                 body: JSON.stringify({
                     messages: [{
@@ -652,7 +688,7 @@
 
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`Proxy error or bad response (HTTP ${response.status}): ${errText.substring(0, 100)}`);
+                throw new Error(`Server error (HTTP ${response.status}): ${errText.substring(0, 100)}`);
             }
 
             const resData = await response.json();
@@ -661,4 +697,5 @@
         }
     </script>
 </body>
+
 </html>
