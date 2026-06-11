@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Automated Image Renamer - Web App</title>
+    <!-- Tesseract.js (Offline Local OCR) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -358,6 +360,14 @@
             <div class="card-title">⚙️ API Settings</div>
 
             <div class="form-group">
+                <label>OCR Engine</label>
+                <select id="ocrEngine">
+                    <option value="tesseract" selected>Tesseract.js (100% Free & Local in Browser)</option>
+                    <option value="groq">Groq Cloud API (Requires Server & Key)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label id="keyLabel">Groq API Key</label>
                 <input type="password" id="apiKey" placeholder="Enter your secret Groq API Key">
             </div>
@@ -438,6 +448,31 @@
             } else if (window.location.protocol === 'file:') {
                 document.getElementById('serverUrl').value = 'http://localhost:10000';
             }
+
+            const cachedEngine = localStorage.getItem('renamer_ocr_engine');
+            if (cachedEngine) {
+                document.getElementById('ocrEngine').value = cachedEngine;
+            }
+
+            toggleOcrSettings();
+        });
+
+        const ocrEngine = document.getElementById('ocrEngine');
+        
+        function toggleOcrSettings() {
+            const apiKeyGroup = document.getElementById('apiKey').closest('.form-group');
+            const serverUrlGroup = document.getElementById('serverUrl').closest('.form-group');
+            if (ocrEngine.value === 'tesseract') {
+                apiKeyGroup.style.display = 'none';
+                serverUrlGroup.style.display = 'none';
+            } else {
+                apiKeyGroup.style.display = 'block';
+                serverUrlGroup.style.display = 'block';
+            }
+        }
+        ocrEngine.addEventListener('change', () => {
+            toggleOcrSettings();
+            localStorage.setItem('renamer_ocr_engine', ocrEngine.value);
         });
 
         // Folder selection
@@ -468,15 +503,17 @@
         }
 
         async function startProcessing() {
+            const engine = document.getElementById('ocrEngine').value;
             const apiKey = document.getElementById('apiKey').value.trim();
-            if (!apiKey) {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+
+            if (engine === 'groq' && !apiKey) {
                 alert('Please enter your Groq API key.');
                 return;
             }
 
-            const serverUrl = document.getElementById('serverUrl').value.trim();
-
-            // Save key and server URL to local storage
+            // Save settings to local storage
+            localStorage.setItem('renamer_ocr_engine', engine);
             localStorage.setItem('renamer_groq_key', apiKey);
             localStorage.setItem('renamer_server_url', serverUrl);
 
@@ -550,7 +587,12 @@
 
                         log(`Processing ${fileHandle.name}...`);
 
-                        let data = await callGroqVision(apiKey, base64Data, file.type);
+                        let data;
+                        if (engine === 'tesseract') {
+                            data = await callTesseractOCR(file);
+                        } else {
+                            data = await callGroqVision(apiKey, base64Data, file.type);
+                        }
 
                         if (data.has_sign && data.number) {
                             const cleanNumber = data.number.replace(/\D/g, '');
@@ -658,42 +700,114 @@
             const serverUrl = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
             const endpoint = serverUrl ? `${serverUrl}/api/groq` : '/api/groq';
             
-            // Fetch from our Node.js proxy endpoint (same-origin request or configured URL, avoiding CORS blocks entirely)
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    messages: [{
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: "Analyze this image and find the white sign board. Extract the sign code MP/26/XXXXX and isolate the 5-digit number. Return JSON with keys: has_sign (bool), code (string or null), number (string or null)."
-                            },
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    url: `data:${mimeType};base64,${base64Data}`
-                                }
-                            }
-                        ]
-                    }],
-                    model: "meta-llama/llama-4-scout-17b-16e-instruct",
-                    response_format: { type: "json_object" }
-                })
-            });
+            let retries = 3;
+            let backoff = 5000; // start with 5 seconds
+            
+            for (let attempt = 0; attempt < retries; attempt++) {
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            messages: [{
+                                role: "user",
+                                content: [
+                                    {
+                                        type: "text",
+                                        text: "Analyze this image and find the white sign board. Extract the sign code MP/26/XXXXX and isolate the 5-digit number. Return JSON with keys: has_sign (bool), code (string or null), number (string or null)."
+                                    },
+                                    {
+                                        type: "image_url",
+                                        image_url: {
+                                            url: `data:${mimeType};base64,${base64Data}`
+                                        }
+                                    }
+                                ]
+                            }],
+                            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+                            response_format: { type: "json_object" }
+                        })
+                    });
 
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Server error (HTTP ${response.status}): ${errText.substring(0, 100)}`);
+                    if (response.status === 429) {
+                        if (attempt < retries - 1) {
+                            log(`⚠️ Rate limit hit (HTTP 429). Retrying in ${backoff / 1000} seconds...`);
+                            await new Promise(resolve => setTimeout(resolve, backoff));
+                            backoff *= 2; // exponential backoff
+                            continue;
+                        }
+                    }
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`Server error (HTTP ${response.status}): ${errText.substring(0, 100)}`);
+                    }
+
+                    const resData = await response.json();
+                    const text = resData.choices[0].message.content.trim();
+                    return JSON.parse(text);
+
+                } catch (err) {
+                    if (attempt === retries - 1) {
+                        throw err;
+                    }
+                    log(`⚠️ Request error: ${err.message}. Retrying in ${backoff / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, backoff));
+                    backoff *= 2;
+                }
             }
+        }
 
-            const resData = await response.json();
-            const text = resData.choices[0].message.content.trim();
-            return JSON.parse(text);
+        async function callTesseractOCR(file) {
+            const result = await Tesseract.recognize(file, 'eng', {
+                logger: m => {
+                    if (m.status === 'loading tesseract core') {
+                        document.getElementById('lblProgressStatus').textContent = `Initializing OCR Core...`;
+                    } else if (m.status === 'loading language traineddata') {
+                        document.getElementById('lblProgressStatus').textContent = `Loading OCR Language Pack (${Math.round(m.progress * 100)}%)...`;
+                    } else if (m.status === 'recognizing') {
+                        document.getElementById('lblProgressStatus').textContent = `Extracting text (${Math.round(m.progress * 100)}%)...`;
+                    }
+                }
+            });
+            const text = result.data.text;
+            
+            // Parse text for consumer code number
+            // Look for MP/26/XXXXX pattern (allowing slight OCR misreadings of separators and characters)
+            const regexSign = /(?:MP|HP|WP|M|P|R)?[\/\s|\\1\-]*26[\/\s|\\1\-]*(\d{5})/i;
+            const match = text.match(regexSign);
+            
+            if (match && match[1]) {
+                return {
+                    has_sign: true,
+                    code: `MP/26/${match[1]}`,
+                    number: match[1]
+                };
+            }
+            
+            // Fallback: search for any 5-digit number that doesn't match 2020-2030 (usually years in timestamps)
+            const regexDigits = /\b\d{5}\b/g;
+            let digitsMatch;
+            while ((digitsMatch = regexDigits.exec(text)) !== null) {
+                const num = digitsMatch[0];
+                const yearNum = parseInt(num);
+                if (yearNum < 2020 || yearNum > 2030) {
+                    return {
+                        has_sign: true,
+                        code: `Detected number: ${num}`,
+                        number: num
+                    };
+                }
+            }
+            
+            return {
+                has_sign: false,
+                code: null,
+                number: null
+            };
         }
     </script>
 </body>
